@@ -1,9 +1,31 @@
-
-console.log("Extension injected.")
-Toggled = false;
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+var BFToken = localStorage.getItem("_DO_NOT_SHARE_BLOXGAME_TOKEN"); // needed for changing client seed
+
+(function(oFunc) { // So we can always have updated auth token for changing our seed
+
+    window.XMLHttpRequest.prototype.open = function(method, url, async=null, user=null, password=null) {
+        if(url == "https://api.bloxgame.com/sso/refresh")
+        {
+            this.onreadystatechange = () => {
+                if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+                    var jsonResponse = JSON.parse(this.responseText);
+                    console.log(jsonResponse)
+                    try{
+                        BFToken = jsonResponse["token"]
+                    }catch{
+                        console.log("Error getting new bftoken.")
+                    }
+                }
+            };
+        }
+
+        const ret = oFunc.call(this,method,url,async,user,password);
+
+        return ret;
+    };
+})(window.XMLHttpRequest.prototype.open); // a.prototype.func
 
 document.addEventListener("DOMContentLoaded", async () => {
     // Function to check for the element
@@ -29,13 +51,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 btn.textContent = "Change Seed";
                 headerUser.after(headerUser, btn)
                 btn.onclick = function(){
-                    const BFToken = localStorage.getItem("_DO_NOT_SHARE_BLOXGAME_TOKEN"); // Needed for sending req
                     var data = {
                         "clientSeed": crypto.randomUUID()
                     }
                     const xhr = new XMLHttpRequest();
                     xhr.open("POST", "https://api.bloxgame.com/provably-fair/clientSeed", true);
                     xhr.setRequestHeader("Content-Type", "application/json");
+                    xhr.setRequestHeader("x-timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
                     xhr.setRequestHeader("x-client-version", "1.0.0");
                     xhr.setRequestHeader("x-auth-token", BFToken);
 
